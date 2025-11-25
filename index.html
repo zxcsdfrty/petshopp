@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>毛孩優選 | 寵物食品專賣</title>
+    <style>
+        /* --- CSS 樣式設定 --- */
+        :root {
+            --primary-color: #ff8c42; /* 溫暖橘 */
+            --secondary-color: #fff5eb; /* 淺米色背景 */
+            --text-color: #333;
+            --border-radius: 8px;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+        }
+
+        /* 導覽列 */
+        header {
+            background-color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .cart-icon {
+            position: relative;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: #ff4757;
+            color: white;
+            font-size: 0.8rem;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 主視覺與產品區 */
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #555;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .product-img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background-color: #eee;
+        }
+
+        .product-info {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .product-desc {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 1rem;
+            flex-grow: 1;
+        }
+
+        .product-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .price {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #e67e3b;
+        }
+
+        /* 購物車側邊欄/彈窗 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cart-modal {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            position: relative;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding: 1rem 0;
+        }
+
+        .cart-total {
+            margin-top: 1.5rem;
+            text-align: right;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .checkout-btn {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+        
+        /* 簡單的通知 */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="#" class="logo">🐾 毛孩優選</a>
+        <div class="cart-icon" onclick="openCart()">
+            🛒 購物車
+            <span class="cart-count" id="cart-count">0</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <h2>精選寵物食品</h2>
+        <div class="product-grid" id="product-list">
+            </div>
+    </main>
+
+    <div class="modal-overlay" id="cart-overlay">
+        <div class="cart-modal">
+            <button class="close-btn" onclick="closeCart()">&times;</button>
+            <h3>您的購物車</h3>
+            <div id="cart-items">
+                <p style="text-align:center; color:#999;">購物車目前是空的</p>
+            </div>
+            <div class="cart-total">
+                總計: NT$ <span id="total-price">0</span>
+            </div>
+            <button class="btn checkout-btn" onclick="checkout()">前往結帳</button>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">已加入購物車</div>
+
+    <script>
+        // --- JavaScript 邏輯 ---
+
+        // 1. 模擬產品資料庫
+        const products = [
+            {
+                id: 1,
+                name: "手工純雞肉乾 (100g)",
+                price: 180,
+                desc: "嚴選國產雞胸肉，低溫烘烤，保留原汁原味，狗狗的最愛。",
+                img: "https://placehold.co/300x200/ffcc99/333?text=Chicken+Jerky" 
+            },
+            {
+                id: 2,
+                name: "耐咬潔牙牛皮骨",
+                price: 85,
+                desc: "幫助清潔牙垢，舒緩焦慮，安全耐咬不傷牙齦。",
+                img: "https://placehold.co/300x200/e6e6e6/333?text=Dog+Bone"
+            },
+            {
+                id: 3,
+                name: "深海魚油膠囊",
+                price: 590,
+                desc: "富含 Omega-3，亮麗毛髮，保護心血管健康。",
+                img: "https://placehold.co/300x200/add8e6/333?text=Fish+Oil"
+            },
+            {
+                id: 4,
+                name: "關節保健粉",
+                price: 450,
+                desc: "葡萄糖胺配方，適合老犬與活動量大的狗狗。",
+                img: "https://placehold.co/300x200/ffb6c1/333?text=Joint+Care"
+            },
+             {
+                id: 5,
+                name: "綜合凍乾零食包",
+                price: 250,
+                desc: "包含雞肉、牛肉、鴨肉，一次滿足挑嘴毛孩。",
+                img: "https://placehold.co/300x200/ffd700/333?text=Mixed+Snacks"
+            }
+        ];
+
+        // 購物車狀態
+        let cart = [];
+
+        // 2. 渲染產品列表
+        function renderProducts() {
+            const productContainer = document.getElementById('product-list');
+            productContainer.innerHTML = products.map(product => `
+                <div class="product-card">
+                    <img src="${product.img}" alt="${product.name}" class="product-img">
+                    <div class="product-info">
+                        <div class="product-title">${product.name}</div>
+                        <div class="product-desc">${product.desc}</div>
+                        <div class="product-footer">
+                            <div class="price">NT$ ${product.price}</div>
+                            <button class="btn" onclick="addToCart(${product.id})">加入購物車</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 3. 加入購物車功能
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            const existingItem = cart.find(item => item.id === productId);
+
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({ ...product, quantity: 1 });
+            }
+
+            updateCartUI();
+            showToast();
+        }
+
+        // 4. 移除購物車項目
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCartUI();
+        }
+
+        // 5. 更新購物車介面 (數量與內容)
+        function updateCartUI() {
+            // 更新圖示數字
+            const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('cart-count').innerText = totalCount;
+
+            // 更新購物車列表 HTML
+            const cartItemsContainer = document.getElementById('cart-items');
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = '<p style="text-align:center; color:#999;">購物車目前是空的</p>';
+            } else {
+                cartItemsContainer.innerHTML = cart.map(item => `
+                    <div class="cart-item">
+                        <div>
+                            <strong>${item.name}</strong><br>
+                            <small>NT$ ${item.price} x ${item.quantity}</small>
+                        </div>
+                        <div>
+                            <span style="font-weight:bold; margin-right:10px;">NT$ ${item.price * item.quantity}</span>
+                            <button class="btn" style="background:#ff4757; padding: 2px 8px; font-size:0.8rem;" onclick="removeFromCart(${item.id})">刪除</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // 更新總金額
+            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('total-price').innerText = totalPrice;
+        }
+
+        // 6. 控制購物車視窗開關
+        function openCart() {
+            document.getElementById('cart-overlay').style.display = 'flex';
+            updateCartUI(); // 確保打開時是最新的
+        }
+
+        function closeCart() {
+            document.getElementById('cart-overlay').style.display = 'none';
+        }
+
+        // 點擊背景也能關閉
+        document.getElementById('cart-overlay').addEventListener('click', function(e) {
+            if (e.target === this) closeCart();
+        });
+
+        // 7. 結帳功能 (模擬)
+        function checkout() {
+            if (cart.length === 0) {
+                alert("購物車是空的喔！");
+                return;
+            }
+            const totalPrice = document.getElementById('total-price').innerText;
+            alert(`感謝您的購買！\n總金額為：NT$ ${totalPrice}\n\n(這是示範網頁，不會真的扣款)`);
+            cart = [];
+            updateCartUI();
+            closeCart();
+        }
+
+        // 8. 顯示提示訊息
+        function showToast() {
+            const toast = document.getElementById("toast");
+            toast.style.opacity = 1;
+            setTimeout(() => { toast.style.opacity = 0; }, 2000);
+        }
+
+        // 初始化
+        renderProducts();
+    </script>
+</body>
+</html>
