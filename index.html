@@ -7,8 +7,8 @@
     <style>
         /* --- CSS 樣式設定 --- */
         :root {
-            --primary-color: #ff8c42; /* 溫暖橘 */
-            --secondary-color: #fff5eb; /* 淺米色背景 */
+            --primary-color: #ff8c42;
+            --secondary-color: #fff5eb;
             --text-color: #333;
             --border-radius: 8px;
         }
@@ -45,6 +45,7 @@
             position: relative;
             cursor: pointer;
             font-size: 1.2rem;
+            user-select: none;
         }
 
         .cart-count {
@@ -71,8 +72,31 @@
 
         h2 {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             color: #555;
+        }
+
+        /* 新增：分類按鈕樣式 */
+        .filter-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .filter-btn {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 0.5rem 1.2rem;
+            margin: 0 0.3rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #666;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
         }
 
         .product-grid {
@@ -107,6 +131,14 @@
             flex-grow: 1;
             display: flex;
             flex-direction: column;
+        }
+
+        .product-category {
+            font-size: 0.8rem;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
         }
 
         .product-title {
@@ -149,7 +181,7 @@
             background-color: #e67e3b;
         }
 
-        /* 購物車側邊欄/彈窗 */
+        /* 購物車彈窗 */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -205,8 +237,7 @@
             font-size: 1rem;
             margin-top: 1rem;
         }
-        
-        /* 簡單的通知 */
+
         .toast {
             position: fixed;
             bottom: 20px;
@@ -217,6 +248,7 @@
             border-radius: 4px;
             opacity: 0;
             transition: opacity 0.3s;
+            z-index: 300;
         }
     </style>
 </head>
@@ -232,6 +264,14 @@
 
     <main class="container">
         <h2>精選寵物食品</h2>
+        
+        <div class="filter-container">
+            <button class="filter-btn active" onclick="filterProducts('all', this)">全部商品</button>
+            <button class="filter-btn" onclick="filterProducts('treats', this)">零食肉乾</button>
+            <button class="filter-btn" onclick="filterProducts('health', this)">保健食品</button>
+            <button class="filter-btn" onclick="filterProducts('toys', this)">玩具用品</button>
+        </div>
+
         <div class="product-grid" id="product-list">
             </div>
     </main>
@@ -255,11 +295,12 @@
     <script>
         // --- JavaScript 邏輯 ---
 
-        // 1. 模擬產品資料庫
+        // 1. 擴充後的產品資料 (新增 category)
         const products = [
             {
                 id: 1,
                 name: "手工純雞肉乾 (100g)",
+                category: "treats",
                 price: 180,
                 desc: "嚴選國產雞胸肉，低溫烘烤，保留原汁原味，狗狗的最愛。",
                 img: "https://placehold.co/300x200/ffcc99/333?text=Chicken+Jerky" 
@@ -267,6 +308,7 @@
             {
                 id: 2,
                 name: "耐咬潔牙牛皮骨",
+                category: "toys",
                 price: 85,
                 desc: "幫助清潔牙垢，舒緩焦慮，安全耐咬不傷牙齦。",
                 img: "https://placehold.co/300x200/e6e6e6/333?text=Dog+Bone"
@@ -274,6 +316,7 @@
             {
                 id: 3,
                 name: "深海魚油膠囊",
+                category: "health",
                 price: 590,
                 desc: "富含 Omega-3，亮麗毛髮，保護心血管健康。",
                 img: "https://placehold.co/300x200/add8e6/333?text=Fish+Oil"
@@ -281,6 +324,7 @@
             {
                 id: 4,
                 name: "關節保健粉",
+                category: "health",
                 price: 450,
                 desc: "葡萄糖胺配方，適合老犬與活動量大的狗狗。",
                 img: "https://placehold.co/300x200/ffb6c1/333?text=Joint+Care"
@@ -288,22 +332,48 @@
              {
                 id: 5,
                 name: "綜合凍乾零食包",
+                category: "treats",
                 price: 250,
                 desc: "包含雞肉、牛肉、鴨肉，一次滿足挑嘴毛孩。",
                 img: "https://placehold.co/300x200/ffd700/333?text=Mixed+Snacks"
+            },
+            {
+                id: 6,
+                name: "寵物益智藏食球",
+                category: "toys",
+                price: 320,
+                desc: "邊吃邊玩，消耗精力，避免毛孩狼吞虎嚥。",
+                img: "https://placehold.co/300x200/90ee90/333?text=Toy+Ball"
             }
         ];
 
-        // 購物車狀態
-        let cart = [];
+        // 2. 初始化購物車 (嘗試從 localStorage 讀取)
+        let cart = JSON.parse(localStorage.getItem('myPetShopCart')) || [];
 
-        // 2. 渲染產品列表
-        function renderProducts() {
+        // 3. 渲染產品功能 (支援篩選)
+        function renderProducts(filterCategory = 'all') {
             const productContainer = document.getElementById('product-list');
-            productContainer.innerHTML = products.map(product => `
+            
+            // 篩選邏輯
+            const filteredProducts = filterCategory === 'all' 
+                ? products 
+                : products.filter(p => p.category === filterCategory);
+
+            productContainer.innerHTML = filteredProducts.map(product => {
+                // 將英文類別轉為中文顯示
+                let categoryName = '';
+                switch(product.category) {
+                    case 'treats': categoryName = '零食肉乾'; break;
+                    case 'health': categoryName = '保健食品'; break;
+                    case 'toys': categoryName = '玩具用品'; break;
+                    default: categoryName = '精選商品';
+                }
+
+                return `
                 <div class="product-card">
                     <img src="${product.img}" alt="${product.name}" class="product-img">
                     <div class="product-info">
+                        <div class="product-category">${categoryName}</div>
                         <div class="product-title">${product.name}</div>
                         <div class="product-desc">${product.desc}</div>
                         <div class="product-footer">
@@ -312,10 +382,19 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
-        // 3. 加入購物車功能
+        // 4. 切換分類按鈕
+        function filterProducts(category, btnElement) {
+            renderProducts(category);
+            
+            // 更新按鈕樣式 (active 狀態)
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            if(btnElement) btnElement.classList.add('active');
+        }
+
+        // 5. 加入購物車
         function addToCart(productId) {
             const product = products.find(p => p.id === productId);
             const existingItem = cart.find(item => item.id === productId);
@@ -327,22 +406,22 @@
             }
 
             updateCartUI();
+            saveCart(); // 儲存到 localStorage
             showToast();
         }
 
-        // 4. 移除購物車項目
+        // 6. 移除購物車項目
         function removeFromCart(productId) {
             cart = cart.filter(item => item.id !== productId);
             updateCartUI();
+            saveCart(); // 儲存到 localStorage
         }
 
-        // 5. 更新購物車介面 (數量與內容)
+        // 7. 更新購物車介面
         function updateCartUI() {
-            // 更新圖示數字
             const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
             document.getElementById('cart-count').innerText = totalCount;
 
-            // 更新購物車列表 HTML
             const cartItemsContainer = document.getElementById('cart-items');
             if (cart.length === 0) {
                 cartItemsContainer.innerHTML = '<p style="text-align:center; color:#999;">購物車目前是空的</p>';
@@ -361,48 +440,53 @@
                 `).join('');
             }
 
-            // 更新總金額
             const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             document.getElementById('total-price').innerText = totalPrice;
         }
 
-        // 6. 控制購物車視窗開關
+        // 8. 儲存購物車到瀏覽器記憶體
+        function saveCart() {
+            localStorage.setItem('myPetShopCart', JSON.stringify(cart));
+        }
+
+        // 9. 視窗控制
         function openCart() {
             document.getElementById('cart-overlay').style.display = 'flex';
-            updateCartUI(); // 確保打開時是最新的
+            updateCartUI();
         }
 
         function closeCart() {
             document.getElementById('cart-overlay').style.display = 'none';
         }
 
-        // 點擊背景也能關閉
         document.getElementById('cart-overlay').addEventListener('click', function(e) {
             if (e.target === this) closeCart();
         });
 
-        // 7. 結帳功能 (模擬)
         function checkout() {
             if (cart.length === 0) {
                 alert("購物車是空的喔！");
                 return;
             }
             const totalPrice = document.getElementById('total-price').innerText;
-            alert(`感謝您的購買！\n總金額為：NT$ ${totalPrice}\n\n(這是示範網頁，不會真的扣款)`);
-            cart = [];
-            updateCartUI();
-            closeCart();
+            if(confirm(`確定要結帳嗎？\n總金額：NT$ ${totalPrice}`)) {
+                alert("訂單已送出！感謝您的購買。");
+                cart = [];
+                updateCartUI();
+                saveCart();
+                closeCart();
+            }
         }
 
-        // 8. 顯示提示訊息
         function showToast() {
             const toast = document.getElementById("toast");
             toast.style.opacity = 1;
             setTimeout(() => { toast.style.opacity = 0; }, 2000);
         }
 
-        // 初始化
-        renderProducts();
+        // 網頁載入時初始化
+        renderProducts('all'); // 預設顯示全部
+        updateCartUI(); // 確保重新整理後購物車數字正確
     </script>
 </body>
 </html>
